@@ -63,6 +63,8 @@ public final class ProducerBatch {
     final ProduceRequestResult produceFuture;
 
     private final List<Thunk> thunks = new ArrayList<>();
+
+    //todo 存放消息记录，该字段不容许为null，因此使用final，在初始化时，就需要赋值；
     private final MemoryRecordsBuilder recordsBuilder;
     private final AtomicInteger attempts = new AtomicInteger(0);
     private final boolean isSplitBatch;
@@ -76,8 +78,8 @@ public final class ProducerBatch {
     private boolean retry;
     private boolean reopened;
 
-    public ProducerBatch(TopicPartition tp, MemoryRecordsBuilder recordsBuilder, long createdMs) {
-        this(tp, recordsBuilder, createdMs, false);
+    public ProducerBatch(TopicPartition partition, MemoryRecordsBuilder recordsBuilder, long createdMs) {
+        this(partition, recordsBuilder, createdMs, false);
     }
 
     public ProducerBatch(TopicPartition tp, MemoryRecordsBuilder recordsBuilder, long createdMs, boolean isSplitBatch) {
@@ -98,15 +100,25 @@ public final class ProducerBatch {
      * Append the record to the current record set and return the relative offset within that record set
      *
      * @return The RecordSend corresponding to this record or null if there isn't sufficient room.
+     *
+     * todo 追加消息到盒子里面，如果盒子满了，或者盒子剩余空间不够用返回null；
      */
     public FutureRecordMetadata tryAppend(long timestamp, byte[] key, byte[] value, Header[] headers, Callback callback, long now) {
+
+        //todo 如果没有足够空间，就返回null；
         if (!recordsBuilder.hasRoomFor(timestamp, key, value, headers)) {
             return null;
         } else {
+
+            //todo 消息最终追加了memoryRecordBuilder的DataoutPutStream里面；
+            //todo 为何需要checkSum值，有何作用？
             Long checksum = this.recordsBuilder.append(timestamp, key, value, headers);
+
             this.maxRecordSize = Math.max(this.maxRecordSize, AbstractRecords.estimateSizeInBytesUpperBound(magic(),
                     recordsBuilder.compressionType(), key, value, headers));
             this.lastAppendTime = now;
+
+            //todo 添加消息返回结果
             FutureRecordMetadata future = new FutureRecordMetadata(this.produceFuture, this.recordCount,
                                                                    timestamp, checksum,
                                                                    key == null ? -1 : key.length,

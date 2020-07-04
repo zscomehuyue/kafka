@@ -157,7 +157,7 @@ public final class RecordAccumulator {
      * TODO 一个producer对应个一个积累器实例；
      * TODO 消息存放入口；
      *
-     * @param tp             The topic/partition to which this record is being sent
+     * @param partition             The topic/partition to which this record is being sent
      * @param timestamp      The timestamp of the record
      * @param key            The key for the record
      * @param value          The value for the record
@@ -165,7 +165,7 @@ public final class RecordAccumulator {
      * @param callback       The user-supplied callback to execute when the request is complete
      * @param maxTimeToBlock The maximum time in milliseconds to block for buffer memory to be available
      */
-    public RecordAppendResult append(TopicPartition tp,
+    public RecordAppendResult append(TopicPartition partition,
                                      long timestamp,
                                      byte[] key,
                                      byte[] value,
@@ -183,7 +183,7 @@ public final class RecordAccumulator {
         try {
             // check if we have an in-progress batch
             //TODO 获取当前分区对应的队列；
-            Deque<ProducerBatch> list = getOrCreateDeque(tp);
+            Deque<ProducerBatch> list = getOrCreateDeque(partition);
             synchronized (list) {
 
                 //TODO producer是否关闭；
@@ -201,7 +201,7 @@ public final class RecordAccumulator {
             byte maxUsableMagic = apiVersions.maxUsableProduceMagic();
             //TODO 计算消息字节数；
             int size = Math.max(this.batchSize, AbstractRecords.estimateSizeInBytesUpperBound(maxUsableMagic, compression, key, value, headers));
-            log.trace("Allocating a new {} byte message buffer for topic {} partition {}", size, tp.topic(), tp.partition());
+            log.trace("Allocating a new {} byte message buffer for topic {} partition {}", size, partition.topic(), partition.partition());
             //TODO 申请bytebuffer来存储消息;
             buffer = free.allocate(size, maxTimeToBlock);
             synchronized (list) {
@@ -218,21 +218,25 @@ public final class RecordAccumulator {
 
                 //TODO 创建盒子,并添加消息；
                 MemoryRecordsBuilder recordsBuilder = recordsBuilder(buffer, maxUsableMagic);
-                ProducerBatch batch = new ProducerBatch(tp, recordsBuilder, time.milliseconds());
+                ProducerBatch batch = new ProducerBatch(partition, recordsBuilder, time.milliseconds());
                 FutureRecordMetadata future = Utils.notNull(batch.tryAppend(timestamp, key, value, headers, callback, time.milliseconds()));
 
                 list.addLast(batch);
 
-                //记录盒子；
+                //记录完成添加消息的盒子；
                 incomplete.add(batch);
 
                 // Don't deallocate this buffer in the finally block as it's being used in the record batch
+
+                //FIXME 该buffer申请后，被对象ByteBufferOutputStream持有，并把由ByteBufferOutputStream.buffer引用；
+                //TODO buffer=null，是释放指针，该指针指向内存的一块地址；并不是把该对象指向内容给释放掉；
                 buffer = null;
                 return new RecordAppendResult(future, list.size() > 1 || batch.isFull(), true);
             }
         } finally {
-            if (buffer != null)
+            if (buffer != null) {
                 free.deallocate(buffer);
+            }
             appendsInProgress.decrementAndGet();
         }
     }

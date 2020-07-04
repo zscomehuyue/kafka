@@ -632,6 +632,11 @@ public class MemoryRecordsBuilder implements AutoCloseable {
         recordWritten(offset, timestamp, sizeInBytes);
     }
 
+    //**
+
+    /**
+     * todo 添加记录消息到appendStream
+     */
     private long appendLegacyRecord(long offset, long timestamp, ByteBuffer key, ByteBuffer value, byte magic) throws IOException {
         ensureOpenForRecordAppend();
         if (compressionType == CompressionType.NONE && timestampType == TimestampType.LOG_APPEND_TIME)

@@ -69,6 +69,8 @@ import static org.apache.kafka.common.record.RecordBatch.NO_TIMESTAMP;
 /**
  * The background thread that handles the sending of produce requests to the Kafka cluster. This thread makes metadata
  * requests to renew its view of the cluster and then sends produce requests to the appropriate nodes.
+ *
+ * todo 从积累器里，获取消息，发送到kafka broker
  */
 public class Sender implements Runnable {
 
@@ -288,7 +290,7 @@ public class Sender implements Runnable {
 
     /**
      * Run a single iteration of sending
-     *
+     * todo 获取消息发送到kafka集群；
      */
     void runOnce() {
         if (transactionManager != null) {
@@ -327,6 +329,8 @@ public class Sender implements Runnable {
         }
 
         long currentTimeMs = time.milliseconds();
+
+        //todo 发送数据
         long pollTimeout = sendProducerData(currentTimeMs);
         client.poll(pollTimeout, currentTimeMs);
     }
@@ -361,8 +365,11 @@ public class Sender implements Runnable {
         }
 
         // create produce requests
+        //todo 从积累器中获取消息；
         Map<Integer, List<ProducerBatch>> batches = this.accumulator.drain(cluster, result.readyNodes, this.maxRequestSize, now);
         addToInflightBatches(batches);
+
+        //todo 顺序性处理
         if (guaranteeMessageOrder) {
             // Mute all the partitions drained
             for (List<ProducerBatch> batchList : batches.values()) {
@@ -793,6 +800,8 @@ public class Sender implements Runnable {
         String nodeId = Integer.toString(destination);
         ClientRequest clientRequest = client.newClientRequest(nodeId, requestBuilder, now, acks != 0,
                 requestTimeoutMs, callback);
+
+        //发送数据；
         client.send(clientRequest, now);
         log.trace("Sent produce request to {}: {}", nodeId, requestBuilder);
     }
