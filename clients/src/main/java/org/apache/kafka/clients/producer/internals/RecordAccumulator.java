@@ -770,6 +770,11 @@ public final class RecordAccumulator {
         }
     }
 
+    /**
+     * todo 顺序性的发送实现方式；
+     * todo 1. max.in.flight.requests.per.connection 设置为1，那么就可以保证其顺序性，否则的话，就不保证顺序性
+     * todo 2. 该partition，对应的队列，批次发送中，最后一个produceBatch发送完后，才会再次获取该partition对应的数据；
+     */
     public void mutePartition(TopicPartition tp) {
         muted.put(tp, Long.MAX_VALUE);
     }
