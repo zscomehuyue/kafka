@@ -774,6 +774,14 @@ public final class RecordAccumulator {
      * todo 顺序性的发送实现方式；
      * todo 1. max.in.flight.requests.per.connection 设置为1，那么就可以保证其顺序性，否则的话，就不保证顺序性
      * todo 2. 该partition，对应的队列，批次发送中，最后一个produceBatch发送完后，才会再次获取该partition对应的数据；
+     * todo 3. 同步发送，不能使用异步发送功能；发送成功后会收到通知ack，才能发送下一条；
+     *
+     * todo 1. 异步发送会，发送到积累器里，存在丢失消息的情况；
+     *         默认发送重试次数为0；
+     * todo    发送失败的逻辑如何处理？
+     *         从积累器移除消息包装箱？
+     *         被kill掉之后消息如何不丢失？
+     * todo    发送失败逻辑如何处理的？
      */
     public void mutePartition(TopicPartition tp) {
         muted.put(tp, Long.MAX_VALUE);
